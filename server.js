@@ -7,16 +7,29 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware with comprehensive CORS settings
+// Middleware with full CORS support for all scenarios
+app.use((req, res, next) => {
+  // Set CORS headers manually for maximum compatibility
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Also use cors middleware as backup
 app.use(cors({
-  origin: true, // Allow all origins
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: false
 }));
-
-// Handle preflight requests
-app.options('*', cors());
 
 app.use(express.json());
 
@@ -32,7 +45,16 @@ app.get('/', (req, res) => {
     apis: {
       newsAPI: !!NEWS_API_KEY,
       alphaVantage: !!ALPHA_VANTAGE_KEY
-    }
+    },
+    cors: 'enabled'
+  });
+});
+
+// Simple test endpoint to check CORS
+app.get('/test', (req, res) => {
+  res.json({ 
+    message: 'CORS test successful!',
+    timestamp: new Date().toISOString()
   });
 });
 
