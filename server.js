@@ -7,17 +7,33 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware with comprehensive CORS settings
+app.use(cors({
+  origin: true, // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: false
+}));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // API Keys - For production, use environment variables
 const NEWS_API_KEY = process.env.NEWS_API_KEY || '86c6fb4088724044af50f2192958afaf';
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY || '45J316M6H07IFWGM';
 
-// Health check endpoint
+// Health check endpoint with debugging info
 app.get('/', (req, res) => {
-  res.json({ message: 'Company News API Server is running!' });
+  res.json({ 
+    message: 'Company News API Server is running!',
+    timestamp: new Date().toISOString(),
+    apis: {
+      newsAPI: !!NEWS_API_KEY,
+      alphaVantage: !!ALPHA_VANTAGE_KEY
+    }
+  });
 });
 
 // Get company news with better error handling
@@ -161,7 +177,7 @@ app.get('/api/company-info/:symbol', async (req, res) => {
   }
 });
 
-// Search for stock symbol by company name with fallback
+// Search for stock symbol by company name with better matching
 app.get('/api/search-symbol/:companyName', async (req, res) => {
   try {
     const { companyName } = req.params;
@@ -183,7 +199,6 @@ app.get('/api/search-symbol/:companyName', async (req, res) => {
     // Check for API limits
     if (data.Note) {
       console.log('⏳ Alpha Vantage API limit reached for symbol search');
-      // Return null symbol so we can still search for news
       return res.json({ 
         symbol: null, 
         message: 'Symbol search temporarily unavailable due to API limits',
@@ -193,21 +208,58 @@ app.get('/api/search-symbol/:companyName', async (req, res) => {
 
     const matches = data.bestMatches || [];
     
-    // Find best match (prefer exact matches and US stocks)
+    // Create a manual mapping for common companies
+    const commonCompanies = {
+      'apple': 'AAPL',
+      'microsoft': 'MSFT', 
+      'google': 'GOOGL',
+      'alphabet': 'GOOGL',
+      'tesla': 'TSLA',
+      'amazon': 'AMZN',
+      'meta': 'META',
+      'facebook': 'META',
+      'netflix': 'NFLX',
+      'nvidia': 'NVDA'
+    };
+    
+    const searchKey = companyName.toLowerCase().trim();
+    
+    // Check if we have a direct match in our common companies
+    if (commonCompanies[searchKey]) {
+      const symbol = commonCompanies[searchKey];
+      console.log(`✅ Found direct match: ${symbol} for ${companyName}`);
+      return res.json({
+        symbol: symbol,
+        name: companyName,
+        type: 'Equity',
+        region: 'United States',
+        currency: 'USD',
+        source: 'direct_match'
+      });
+    }
+    
+    // Find best match from API results
     let topMatch = null;
     for (const match of matches) {
-      const matchName = match['2. name'] || '';
+      const matchName = (match['2. name'] || '').toLowerCase();
       const region = match['4. region'] || '';
       const type = match['3. type'] || '';
       
-      // Prefer US stocks and equity types
-      if (region === 'United States' && type.includes('Equity')) {
-        topMatch = match;
-        break;
+      // Prefer exact company name matches
+      if (matchName.includes(searchKey) && region === 'United States' && type.includes('Equity')) {
+        // For Apple, prefer the one that's exactly "Apple Inc" over "Apple Hospitality"
+        if (searchKey === 'apple' && matchName.includes('apple inc')) {
+          topMatch = match;
+          break;
+        }
+        // For other companies, prefer shorter names (usually the main company)
+        if (!topMatch || matchName.length < (topMatch['2. name'] || '').length) {
+          topMatch = match;
+        }
       }
     }
     
-    // If no US equity found, use first match
+    // If no good US equity match, use first match
     if (!topMatch && matches.length > 0) {
       topMatch = matches[0];
     }
@@ -218,7 +270,8 @@ app.get('/api/search-symbol/:companyName', async (req, res) => {
         name: topMatch['2. name'],
         type: topMatch['3. type'],
         region: topMatch['4. region'],
-        currency: topMatch['8. currency']
+        currency: topMatch['8. currency'],
+        source: 'api_search'
       };
       
       console.log(`✅ Found symbol: ${result.symbol} for ${companyName}`);
