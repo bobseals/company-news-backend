@@ -1,3 +1,4 @@
+# package.json - Copy this EXACTLY
 {
   "name": "company-news-backend",
   "version": "1.0.0",
@@ -22,7 +23,21 @@
   "license": "ISC"
 }
 
+# Vercel Settings to Use:
+Build Command: npm install
+Output Directory: (leave blank)
+Install Command: npm install
+Development Command: npm run dev
 
+# OR try these alternative settings:
+Build Command: (leave blank)
+Output Directory: (leave blank) 
+Install Command: npm ci
+Development Command: npm startecho \"Error: no test specified\" && exit 1"
+  }
+}
+
+# .gitignore file (create this to avoid committing secrets)
 node_modules/
 .env
 .DS_Store
