@@ -1,4 +1,3 @@
-# package.json - Copy this EXACTLY
 {
   "name": "company-news-backend",
   "version": "1.0.0",
@@ -6,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "echo 'No build needed for Node.js'",
-    "dev": "nodemon server.js"
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -18,27 +16,6 @@
   "engines": {
     "node": "18.x"
   },
-  "keywords": ["api", "news", "finance", "company"],
-  "author": "Your Name",
+  "keywords": ["api", "news", "finance"],
   "license": "ISC"
 }
-
-# Vercel Settings to Use:
-Build Command: npm install
-Output Directory: (leave blank)
-Install Command: npm install
-Development Command: npm run dev
-
-# OR try these alternative settings:
-Build Command: (leave blank)
-Output Directory: (leave blank) 
-Install Command: npm ci
-Development Command: npm startecho \"Error: no test specified\" && exit 1"
-  }
-}
-
-# .gitignore file (create this to avoid committing secrets)
-node_modules/
-.env
-.DS_Store
-*.log
